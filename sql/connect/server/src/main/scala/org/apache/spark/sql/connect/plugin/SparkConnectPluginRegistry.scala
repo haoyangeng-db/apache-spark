@@ -25,8 +25,8 @@ import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.util.Utils
 
 /**
- * This object provides a global list of configured relation, expression, command, and getStatus
- * plugins for Spark Connect. The plugins are used to handle custom message types.
+ * This object provides a global list of configured relation, expression, command, getStatus, and
+ * interrupt plugins for Spark Connect. The plugins are used to handle custom message types.
  */
 object SparkConnectPluginRegistry {
 
@@ -51,17 +51,24 @@ object SparkConnectPluginRegistry {
     // getStatus[DummyGetStatusPlugin](classOf[DummyGetStatusPlugin])
   )
 
+  private lazy val interruptPluginChain: Seq[interruptPluginBuilder] = Seq(
+    // Adding a new plugin at compile time works like the example below:
+    // interrupt[DummyInterruptPlugin](classOf[DummyInterruptPlugin])
+  )
+
   private var initialized = false
   private var relationRegistryCache: Seq[RelationPlugin] = Seq.empty
   private var expressionRegistryCache: Seq[ExpressionPlugin] = Seq.empty
   private var commandRegistryCache: Seq[CommandPlugin] = Seq.empty
   private var getStatusRegistryCache: Seq[GetStatusPlugin] = Seq.empty
+  private var interruptRegistryCache: Seq[InterruptPlugin] = Seq.empty
 
   // Type used to identify the closure responsible to instantiate a ServerInterceptor.
   type relationPluginBuilder = () => RelationPlugin
   type expressionPluginBuilder = () => ExpressionPlugin
   type commandPluginBuilder = () => CommandPlugin
   type getStatusPluginBuilder = () => GetStatusPlugin
+  type interruptPluginBuilder = () => InterruptPlugin
 
   def relationRegistry: Seq[RelationPlugin] = withInitialize {
     relationRegistryCache
@@ -75,6 +82,9 @@ object SparkConnectPluginRegistry {
   def getStatusRegistry: Seq[GetStatusPlugin] = withInitialize {
     getStatusRegistryCache
   }
+  def interruptRegistry: Seq[InterruptPlugin] = withInitialize {
+    interruptRegistryCache
+  }
   def mlBackendRegistry(conf: SQLConf): Seq[MLBackendPlugin] = loadMlBackendPlugins(conf)
 
   private def withInitialize[T](f: => Seq[T]): Seq[T] = {
@@ -84,6 +94,7 @@ object SparkConnectPluginRegistry {
         expressionRegistryCache = loadExpressionPlugins()
         commandRegistryCache = loadCommandPlugins()
         getStatusRegistryCache = loadGetStatusPlugins()
+        interruptRegistryCache = loadInterruptPlugins()
         initialized = true
       }
     }
@@ -110,9 +121,28 @@ object SparkConnectPluginRegistry {
         relationRegistryCache = loadRelationPlugins()
         expressionRegistryCache = loadExpressionPlugins()
         commandRegistryCache = loadCommandPlugins()
+        interruptRegistryCache = loadInterruptPlugins()
         initialized = true
       }
       getStatusRegistryCache = plugins
+    }
+  }
+
+  /**
+   * Only visible for testing. Allows injecting test Interrupt plugins directly into the registry
+   * cache, bypassing the normal plugin chain loading. Forces initialization of all other caches
+   * if not already initialized, then overrides the Interrupt cache.
+   */
+  private[connect] def setInterruptPluginsForTesting(plugins: Seq[InterruptPlugin]): Unit = {
+    synchronized {
+      if (!initialized) {
+        relationRegistryCache = loadRelationPlugins()
+        expressionRegistryCache = loadExpressionPlugins()
+        commandRegistryCache = loadCommandPlugins()
+        getStatusRegistryCache = loadGetStatusPlugins()
+        initialized = true
+      }
+      interruptRegistryCache = plugins
     }
   }
 
@@ -141,6 +171,12 @@ object SparkConnectPluginRegistry {
     getStatusPluginChain.map(x => x()) ++
       createConfiguredPlugins(
         SparkEnv.get.conf.get(Connect.CONNECT_EXTENSIONS_GET_STATUS_CLASSES))
+  }
+
+  private[connect] def loadInterruptPlugins(): Seq[InterruptPlugin] = {
+    interruptPluginChain.map(x => x()) ++
+      createConfiguredPlugins(
+        SparkEnv.get.conf.get(Connect.CONNECT_EXTENSIONS_INTERRUPT_CLASSES))
   }
 
   private[connect] def loadMlBackendPlugins(sqlConf: SQLConf): Seq[MLBackendPlugin] = {
@@ -224,4 +260,12 @@ object SparkConnectPluginRegistry {
    */
   def getStatus[T <: GetStatusPlugin](cls: Class[T]): getStatusPluginBuilder =
     () => createInstance[GetStatusPlugin, T](cls)
+
+  /**
+   * Creates a callable expression that instantiates the configured Interrupt plugin.
+   *
+   * Visible for testing only.
+   */
+  def interrupt[T <: InterruptPlugin](cls: Class[T]): interruptPluginBuilder =
+    () => createInstance[InterruptPlugin, T](cls)
 }

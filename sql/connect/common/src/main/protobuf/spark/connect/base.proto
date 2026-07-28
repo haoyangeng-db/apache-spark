@@ -829,6 +829,9 @@ message InterruptRequest {
     // if interrupt_tag == INTERRUPT_TYPE_OPERATION_ID, interrupt operation with this operation_id.
     string operation_id = 6;
   }
+
+  // Extension point for custom interrupt request types.
+  repeated google.protobuf.Any extensions = 999;
 }
 
 // Next ID: 4
@@ -842,6 +845,8 @@ message InterruptResponse {
   // Operation ids of the executions which were interrupted.
   repeated string interrupted_ids = 2;
 
+  // Extension point for custom interrupt response types.
+  repeated google.protobuf.Any extensions = 999;
 }
 
 message ReattachOptions {

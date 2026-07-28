@@ -59,6 +59,13 @@ class DummyGetStatusPlugin extends GetStatusPlugin {
     Optional.empty()
 }
 
+class DummyInterruptPlugin extends InterruptPlugin {
+  override def prepareInterrupt(
+      sessionHolder: SessionHolder,
+      request: proto.InterruptRequest): Optional[java.util.List[protobuf.Any]] =
+    Optional.empty()
+}
+
 class DummyPluginNoTrivialCtor(id: Int) extends RelationPlugin {
   override def transform(
       relation: Array[Byte],
@@ -133,6 +140,9 @@ class SparkConnectPluginRegistrySuite extends SharedSparkSession with SparkConne
     }
     if (SparkEnv.get.conf.contains(Connect.CONNECT_EXTENSIONS_GET_STATUS_CLASSES)) {
       SparkEnv.get.conf.remove(Connect.CONNECT_EXTENSIONS_GET_STATUS_CLASSES)
+    }
+    if (SparkEnv.get.conf.contains(Connect.CONNECT_EXTENSIONS_INTERRUPT_CLASSES)) {
+      SparkEnv.get.conf.remove(Connect.CONNECT_EXTENSIONS_INTERRUPT_CLASSES)
     }
     SparkConnectPluginRegistry.reset()
   }
@@ -281,6 +291,31 @@ class SparkConnectPluginRegistrySuite extends SharedSparkSession with SparkConne
     }
   }
 
+  test("Interrupt registry is empty by default") {
+    assert(SparkConnectPluginRegistry.loadInterruptPlugins().isEmpty)
+  }
+
+  test("Interrupt plugin loaded dynamically from config") {
+    withSparkConf(
+      Connect.CONNECT_EXTENSIONS_INTERRUPT_CLASSES.key ->
+        "org.apache.spark.sql.connect.plugin.DummyInterruptPlugin") {
+      val plugins = SparkConnectPluginRegistry.loadInterruptPlugins()
+      assert(plugins.size == 1)
+      assert(plugins.head.isInstanceOf[InterruptPlugin])
+    }
+  }
+
+  test("Multiple Interrupt plugins loaded dynamically from config") {
+    withSparkConf(
+      Connect.CONNECT_EXTENSIONS_INTERRUPT_CLASSES.key ->
+        ("org.apache.spark.sql.connect.plugin.DummyInterruptPlugin," +
+          "org.apache.spark.sql.connect.plugin.DummyInterruptPlugin")) {
+      val plugins = SparkConnectPluginRegistry.loadInterruptPlugins()
+      assert(plugins.size == 2)
+      plugins.foreach(p => assert(p.isInstanceOf[InterruptPlugin]))
+    }
+  }
+
   test("Building builders using factory methods") {
     val x = SparkConnectPluginRegistry.relation[DummyPlugin](classOf[DummyPlugin])
     assert(x != null)
@@ -293,6 +328,10 @@ class SparkConnectPluginRegistrySuite extends SharedSparkSession with SparkConne
       SparkConnectPluginRegistry.getStatus[DummyGetStatusPlugin](classOf[DummyGetStatusPlugin])
     assert(z != null)
     assert(z().isInstanceOf[GetStatusPlugin])
+    val w =
+      SparkConnectPluginRegistry.interrupt[DummyInterruptPlugin](classOf[DummyInterruptPlugin])
+    assert(w != null)
+    assert(w().isInstanceOf[InterruptPlugin])
   }
 
   test("Configured class not found is properly thrown") {

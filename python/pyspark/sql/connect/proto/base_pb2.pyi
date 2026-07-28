@@ -2961,6 +2961,7 @@ class InterruptRequest(google.protobuf.message.Message):
     INTERRUPT_TYPE_FIELD_NUMBER: builtins.int
     OPERATION_TAG_FIELD_NUMBER: builtins.int
     OPERATION_ID_FIELD_NUMBER: builtins.int
+    EXTENSIONS_FIELD_NUMBER: builtins.int
     session_id: builtins.str
     """(Required)
 
@@ -2989,6 +2990,13 @@ class InterruptRequest(google.protobuf.message.Message):
     """if interrupt_tag == INTERRUPT_TYPE_TAG, interrupt operation with this tag."""
     operation_id: builtins.str
     """if interrupt_tag == INTERRUPT_TYPE_OPERATION_ID, interrupt operation with this operation_id."""
+    @property
+    def extensions(
+        self,
+    ) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[
+        google.protobuf.any_pb2.Any
+    ]:
+        """Extension point for custom interrupt request types."""
     def __init__(
         self,
         *,
@@ -2999,6 +3007,7 @@ class InterruptRequest(google.protobuf.message.Message):
         interrupt_type: global___InterruptRequest.InterruptType.ValueType = ...,
         operation_tag: builtins.str = ...,
         operation_id: builtins.str = ...,
+        extensions: collections.abc.Iterable[google.protobuf.any_pb2.Any] | None = ...,
     ) -> None: ...
     def HasField(
         self,
@@ -3032,6 +3041,8 @@ class InterruptRequest(google.protobuf.message.Message):
             b"client_observed_server_side_session_id",
             "client_type",
             b"client_type",
+            "extensions",
+            b"extensions",
             "interrupt",
             b"interrupt",
             "interrupt_type",
@@ -3072,6 +3083,7 @@ class InterruptResponse(google.protobuf.message.Message):
     SESSION_ID_FIELD_NUMBER: builtins.int
     SERVER_SIDE_SESSION_ID_FIELD_NUMBER: builtins.int
     INTERRUPTED_IDS_FIELD_NUMBER: builtins.int
+    EXTENSIONS_FIELD_NUMBER: builtins.int
     session_id: builtins.str
     """Session id in which the interrupt was running."""
     server_side_session_id: builtins.str
@@ -3083,16 +3095,26 @@ class InterruptResponse(google.protobuf.message.Message):
         self,
     ) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """Operation ids of the executions which were interrupted."""
+    @property
+    def extensions(
+        self,
+    ) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[
+        google.protobuf.any_pb2.Any
+    ]:
+        """Extension point for custom interrupt response types."""
     def __init__(
         self,
         *,
         session_id: builtins.str = ...,
         server_side_session_id: builtins.str = ...,
         interrupted_ids: collections.abc.Iterable[builtins.str] | None = ...,
+        extensions: collections.abc.Iterable[google.protobuf.any_pb2.Any] | None = ...,
     ) -> None: ...
     def ClearField(
         self,
         field_name: typing_extensions.Literal[
+            "extensions",
+            b"extensions",
             "interrupted_ids",
             b"interrupted_ids",
             "server_side_session_id",

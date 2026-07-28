@@ -273,6 +273,18 @@ object Connect {
       .toSequence
       .createWithDefault(Nil)
 
+  val CONNECT_EXTENSIONS_INTERRUPT_CLASSES =
+    buildStaticConf("spark.connect.extensions.interrupt.classes")
+      .doc("""
+             |Comma separated list of classes that implement the trait
+             |org.apache.spark.sql.connect.plugin.InterruptPlugin to support custom
+             |Interrupt extensions in proto.
+             |""".stripMargin)
+      .version("4.3.0")
+      .stringConf
+      .toSequence
+      .createWithDefault(Nil)
+
   val CONNECT_ML_BACKEND_CLASSES =
     buildConf("spark.connect.ml.backend.classes")
       .doc("""

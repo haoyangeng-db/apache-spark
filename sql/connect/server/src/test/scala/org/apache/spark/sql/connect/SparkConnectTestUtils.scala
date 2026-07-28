@@ -59,4 +59,26 @@ object SparkConnectTestUtils {
     executeHolder.eventsManager.status_(ExecuteStatus.Started)
     executeHolder
   }
+
+  /** Creates a dummy execute holder tagged with the given operation tags, for interrupt-by-tag. */
+  def createDummyExecuteHolder(
+      sessionHolder: SessionHolder,
+      command: proto.Command,
+      tags: Seq[String]): ExecuteHolder = {
+    sessionHolder.eventManager.status_(SessionStatus.Started)
+    val requestBuilder = proto.ExecutePlanRequest
+      .newBuilder()
+      .setPlan(proto.Plan.newBuilder().setCommand(command).build())
+      .setSessionId(sessionHolder.sessionId)
+      .setUserContext(
+        proto.UserContext
+          .newBuilder()
+          .setUserId(sessionHolder.userId)
+          .build())
+    tags.foreach(requestBuilder.addTags)
+    val executeHolder =
+      SparkConnectService.executionManager.createExecuteHolder(requestBuilder.build())
+    executeHolder.eventsManager.status_(ExecuteStatus.Started)
+    executeHolder
+  }
 }
